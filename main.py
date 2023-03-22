@@ -1,6 +1,9 @@
 
 #%%
 import checking_result_permutation_test
+
+comparisons = ['FaceNum', 'AnimalNum', 'AnimalFace']
+
 def main():
 
     ROInames = []
@@ -8,40 +11,41 @@ def main():
     for taskid in range(2):
 
         for l in range(4):
-            roiNames, roiMasks = checking_result_permutation_test.plot_brain_with_mask(taskid, l+1,1)
-            ROInames.append(roiNames)
-            ROImasks.append(roiMasks)
+            checking_result_permutation_test.create_fdr_mask(2.021, 0.05, taskid, l+1, save_option=1)
+            # roiNames, roiMasks = checking_result_permutation_test.plot_brain_with_mask(taskid, l+1,1)
+            # ROInames.append(roiNames)
+            # ROImasks.append(roiMasks)
 
-    return ROInames, ROImasks
+    # return ROInames, ROImasks
 
-# main()
+main()
 
-#%% get names of ROI showing difference in semantic processing for each task
-import pandas as pd
-from collections import defaultdict
-import checking_result_permutation_test
-ROInames = list()
-path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\listening\\peSCAR\\'
-fname_excel = 'signifcantROIs.xlsx'
+# #%% get names of ROI showing difference in semantic processing for each task
+# import pandas as pd
+# from collections import defaultdict
+# import checking_result_permutation_test
+# ROInames = list()
+# path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\listening\\peSCAR\\'
+# fname_excel = 'signifcantROIs.xlsx'
 
-tasks = ['listening', 'imagined', 'overt']
-with pd.ExcelWriter(path_save + fname_excel) as writer:
-    for taskid in range(2):
-        ROInames.append(defaultdict(list))
-        for l in range(4):
+# tasks = ['listening', 'imagined', 'overt']
+# with pd.ExcelWriter(path_save + fname_excel) as writer:
+#     for taskid in range(2):
+#         ROInames.append(defaultdict(list))
+#         for l in range(4):
             
-            temp, _ = checking_result_permutation_test.plot_brain_with_mask(taskid, l+1,0)
-            for k in temp.keys():
-                ROInames[taskid][k].extend(temp[k])
+#             temp, _ = checking_result_permutation_test.plot_brain_with_mask(taskid, l+1,0)
+#             for k in temp.keys():
+#                 ROInames[taskid][k].extend(temp[k])
         
-        # keep only unique value for each ROI
-        for k in ROInames[taskid].keys():
-            ROInames[taskid][k] = list(set(ROInames[taskid][k]))
-        saved_df = pd.DataFrame.from_dict(ROInames[taskid], orient = 'index')
-        saved_df = saved_df.transpose()
-        # with pd.ExcelWriter(path_save + fname_excel) as writer:
-        saved_df.to_excel(writer, sheet_name=tasks[taskid])
-        del saved_df
+#         # keep only unique value for each ROI
+#         for k in ROInames[taskid].keys():
+#             ROInames[taskid][k] = list(set(ROInames[taskid][k]))
+#         saved_df = pd.DataFrame.from_dict(ROInames[taskid], orient = 'index')
+#         saved_df = saved_df.transpose()
+#         # with pd.ExcelWriter(path_save + fname_excel) as writer:
+#         saved_df.to_excel(writer, sheet_name=tasks[taskid])
+#         del saved_df
 
 
         
