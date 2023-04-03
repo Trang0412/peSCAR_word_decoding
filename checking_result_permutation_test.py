@@ -18,6 +18,7 @@ import seaborn as sns
 import pandas as pd
 import mne
 
+from palettable.cartocolors.sequential import Teal_2
 
 sys.path.insert(1, 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\code\\python\\semantic_processing')
 import utilities as ut
@@ -31,6 +32,8 @@ splitlabelsname = [label.name for label in st.splitlabels]
 ROIsubId = ut.find_ROIsubId(orglabelsname,splitlabelsname)
 
 comparisons = st.comparisons
+
+maplimits = [7.11, 3.53] # 23.03.30 # for making paper's figure
 #%% Run PeSCAR for each time window
 
 def create_fdr_mask(criticalTval, alpha, taskid, compi, l):
@@ -53,14 +56,14 @@ def create_fdr_mask(criticalTval, alpha, taskid, compi, l):
     if taskid == 0:
         latencies = [[0.106, 0.133],[0.196, 0.231],[0.352, 0.407],[0.458, 0.485]] # listening
     elif taskid == 1:
-        latencies = [[0.063, 0.134],[0.173, 0.243],[0.274, 0.325],[0.446, 0.477],[0.580, 0.657]] # imagined
+        latencies = [[0.063, 0.134],[0.173, 0.243],[0.274, 0.325],[0.446, 0.477]] # imagined
     else:
         latencies =[[-0.2, 0], [0.134, 0.177], [0.189, 0.216], [0.240, 0.302], [0.384, 0.497], [0.560, 0.689] ]# overt task
 
     # criticalTval = 2.021 # 2 tail t-test for 40 sample with critical value is set to 0.01
     # alpha = 0.05 # for FDR correction
     path_pescar = st.pathDatSem +  st.tasks[taskid]  + "\\peSCAR\\"
-    latency = latencies[l-1]
+    latency = latencies[l]
     
     # Load observed t- values and permutation t-values data  
     obsTvalsubROIs = loadmat(path_pescar + "obsTvalsubROIs_" + str(int(latency[0]*1000)) + "_" + str(int(latency[1]*1000)) + ".mat") # t-statistic from osberved data
@@ -99,7 +102,7 @@ def create_fdr_mask(criticalTval, alpha, taskid, compi, l):
     fdrROInames = [st.orglabels[idx].name for idx in fdrROI]
 
     #%  Modify mask matrices due to applying FDR
-    fdrMaskROIs = [maskVal in fdrROIfor maskVal in ROIsubId]
+    fdrMaskROIs = [maskVal in fdrROI for maskVal in ROIsubId]
     fdrMaskSubROIs = np.multiply(fdrMaskROIs, maskSubROIs)
 
     return fdrMaskSubROIs
@@ -123,7 +126,7 @@ def plot_brain_with_mask(taskid, l, plot_brain=0):
     fdrMaskSubROIallPairs = dict()
     for compi in range(len(comparisons)):   
 
-        fdrMaskSubROIallPairs[comparisons[compi]] = create_fdr_mask(criticalTval, alpha, taskid, l)
+        fdrMaskSubROIallPairs[comparisons[compi]] = create_fdr_mask(criticalTval, alpha, taskid, compi, l)
 
         # %  Visualizing permutation t-test result with mask on pragmatic atlas
         '''
@@ -182,37 +185,45 @@ def plot_brain_with_mask(taskid, l, plot_brain=0):
 
         if plot_brain == 1:
             time_label = latency[0]*1000 # in ms
-            # path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\' + st.tasks[taskid] + '\\figure\\brain\\without_pragmatic_atlas\\v2\\'
-            path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\' + st.tasks[taskid] + '\\figure\\brain\\p_0.01\\without_pragmatic_atlas\\'
 
             # Plot brain
             hemi = 'split'
             views = 'lateral'  #'lateral' 
-            # create saving folder if not existing
-            if os.path.exists(path_save + views)==False:
-                os.mkdir(path_save + views)
 
-            # Face-Number
+            # Plot bram for current comparison
             figtitle = comparisons[compi] + str(time_label) + " ms, FDR correction, p<"  + str(alpha)      
             stc_viz = ut.mask_stats_results_on_brain( np.reshape(obsTvalsubROIs[comparisons[compi]], -1) , 
-                                    st.splitlabels, np.reshape(fdrMaskSubROIallPairs[comparisons[compi]],-1), st.tasks[taskid] + figtitle, time_label, path_save,1)     
+                                    st.splitlabels, np.reshape(fdrMaskSubROIallPairs[comparisons[compi]],-1), st.tasks[taskid] + figtitle, time_label)     
 
             # parameter to for brain plotting
+
+            # maplimit = max(np.max(abs(stc_viz.data)), criticalTval)
+            maplimit = max( maplimits[taskid], criticalTval)
+
             surfer_kwargs = dict(surface='inflated', subject=st.subject, subjects_dir=st.subjects_dir,
                 hemi=hemi, views=views, size=(1200,400), title =  st.tasks[taskid] + figtitle, initial_time=time_label, 
-                time_unit='ms', background='white', clim={ 'kind':'value', 'pos_lims':[criticalTval, criticalTval, max(np.max(abs(stc_viz.data)), criticalTval)] }  )
+                time_unit='ms', background='white', clim={ 'kind':'value', 'pos_lims':[criticalTval, criticalTval, maplimit] }  )
 
 
             brain = mne.viz.plot_source_estimates(stc_viz,**surfer_kwargs)
             brain.add_text(0.1, 0.9, figtitle, 'title', font_size=11)
-            fname = path_save + '\\' +views + '\\' +  figtitle[2:len(figtitle)-24] + '.png'
+
+            # save brain plot
+            # path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\' + st.tasks[taskid] + '\\figure\\brain\\without_pragmatic_atlas\\v2\\'
+            path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\' + st.tasks[taskid] + '\\figure\\brain\\p_0.05\\without_pragmatic_atlas\\for_paper\\'
+            # create saving folder if not existing
+            if os.path.exists(path_save + views)==False:
+                os.mkdir(path_save + views)
+            # fname = path_save + '\\' +views + '\\' +  figtitle[2:len(figtitle)-24] + '.png'
+            fname = path_save + '\\' +views + '\\' +  figtitle[:len(figtitle)-24] + '.png'
+
             brain.save_image(fname)
             brain.close()
 
             del stc_viz
 
 
-def plot_brain_all_time(taskid, plot_brain=1): 
+def plot_difference_brain_map(taskid, plot_brain, views): 
     """
     Plot brain for differences in 4 time windows into 1, only shows t values of regions that shows consistent activation for either semantic category.
     Regions that changes their activation for either semantic category over time are shown in color of parcellation with opacity
@@ -220,6 +231,9 @@ def plot_brain_all_time(taskid, plot_brain=1):
 
         - Regions that shows consistently strong activation for first semantic category over 4 time windows are shown in red
         - Regions that shows consistently strong activation for first semantic category over 4 time windows are shown in blue
+
+    Usage: 
+        - Call in loop for task
 
     Inputs:
         taskid: int, task index
@@ -235,7 +249,8 @@ def plot_brain_all_time(taskid, plot_brain=1):
     if taskid == 0:
         latencies = [[0.106, 0.133],[0.196, 0.231],[0.352, 0.407],[0.458, 0.485]] # listening
     elif taskid == 1:
-        latencies = [[0.063, 0.134],[0.173, 0.243],[0.274, 0.325],[0.446, 0.477],[0.580, 0.657]] # imagined
+        latencies = [[0.063, 0.134],[0.173, 0.243],[0.274, 0.325],[0.446, 0.477]] # imagined
+        # latencies = [[0.063, 0.134],[0.173, 0.243],[0.274, 0.325],[0.446, 0.477],[0.580, 0.657]] # imagined
     else:
         latencies =[[-0.2, 0], [0.134, 0.177], [0.189, 0.216], [0.240, 0.302], [0.384, 0.497], [0.560, 0.689] ]# overt task
 
@@ -271,37 +286,91 @@ def plot_brain_all_time(taskid, plot_brain=1):
         overlappedIndex[comparisons[compi]] = list(set(redIndex_temp).intersection(blueIndex_temp))
         redIndex[comparisons[compi]] = list(set(redIndex_temp) - set(overlappedIndex[comparisons[compi]]))
         blueIndex[comparisons[compi]] = list(set(blueIndex_temp) - set(overlappedIndex[comparisons[compi]]))
+        newMask = np.zeros((1, len(st.splitlabels)))
+        newMask[:,redIndex[comparisons[compi]] ] = 1
+        newMask[:,blueIndex[comparisons[compi]] ] = 1
+        newMask[:,-2:] = [0,0] # exluding 2 'unknown' regions
 
-        # Visualize on the brain. NOT FINISHED YET.
+        # Calculate sum of t-values over significant ROIs
+        sumObsTVal = np.sum(obsTvalWithMask[comparisons[compi]],0)
+
+        # Visualize results of 3 comparisons on the brain. 
         if plot_brain == 1:
-            path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\' + st.tasks[taskid] + '\\figure\\brain\\p_0.05\\without_pragmatic_atlas\\'
-
+            
             # Plot brain
             hemi = 'split'
-            views = 'lateral'  #'lateral' 
-            # create saving folder if not existing
-            if os.path.exists(path_save + views)==False:
-                os.mkdir(path_save + views)
+            # views = 'lateral'  #'lateral' 
 
-            # Face-Number
+            # Load data for current comparison
             figtitle = comparisons[compi] + " all time, FDR correction, p<"  + str(alpha)      
-            stc_viz = ut.mask_stats_results_on_brain( np.reshape(obsTvalWithMask[comparisons[compi]], -1) , 
-                                    st.splitlabels, np.reshape(fdrMaskSubROIallPairs[comparisons[compi]],-1), st.tasks[taskid] + figtitle, time_label, path_save,1)     
+            stc_viz = ut.mask_stats_results_on_brain( np.reshape(sumObsTVal, -1) , 
+                                    st.splitlabels, np.reshape(newMask,-1), st.tasks[taskid] + figtitle, 0)     
 
-            # parameter to for brain plotting
+            # # parameter to for brain plotting, color limit is set to the maximum t-value in current comparison
+            # surfer_kwargs = dict(surface='inflated', subject=st.subject, subjects_dir=st.subjects_dir,
+            #     hemi=hemi, views=views, size=(1200,400), title =  st.tasks[taskid] + figtitle, 
+            #     time_unit='ms', background='white', clim={ 'kind':'value', 'pos_lims':[criticalTval, criticalTval, max(np.max(abs(stc_viz.data)), criticalTval)] }  )
+            
+            
+            # parameter to for brain plotting, , color limit is fixed to the maximum t-value over 3 comparisons, which is 9.88
             surfer_kwargs = dict(surface='inflated', subject=st.subject, subjects_dir=st.subjects_dir,
-                hemi=hemi, views=views, size=(1200,400), title =  st.tasks[taskid] + figtitle, initial_time=time_label, 
-                time_unit='ms', background='white', clim={ 'kind':'value', 'pos_lims':[criticalTval, criticalTval, max(np.max(abs(stc_viz.data)), criticalTval)] }  )
-
+                hemi=hemi, views=views, size=(1200,400), title =  st.tasks[taskid] + figtitle, 
+                time_unit='ms', background='white', clim={ 'kind':'value', 'pos_lims':[criticalTval, criticalTval, 9.88] }  )
 
             brain = mne.viz.plot_source_estimates(stc_viz,**surfer_kwargs)
             brain.add_text(0.1, 0.9, figtitle, 'title', font_size=11)
-            fname = path_save + '\\' +views + '\\' +  figtitle[2:len(figtitle)-24] + '.png'
+
+            # # plot boundaries for overlapping regions, excluded 'unknown' regions (left and right hemisphere) in the parcellation
+            # overlapped_labels = [label for (i,label) in enumerate(st.splitlabels[:-2]) if i in overlappedIndex[comparisons[compi]] ]
+            # for label in overlapped_labels:
+            #     brain.add_label(label, color="#55F159", borders=False)
+
+            path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\' + st.tasks[taskid] + '\\figure\\brain\\p_0.05\\without_pragmatic_atlas\\'
+            # create saving folder if not existing
+            if os.path.exists(path_save + views)==False:
+                os.mkdir(path_save + views)
+            fname = path_save + '\\' + views + '\\' +  comparisons[compi]  + '_semantic_difference_map_no_overlap.png'
             brain.save_image(fname)
             brain.close()
 
 
-        return overlappedIndex, blueIndex, redIndex
+    # Summarize strongly activated brain regions for each category in 2 of 3 comparisons
+    semanticROIindex = dict()
+    semanticROIindex['Animal'] = []
+    semanticROIindex['Face'] = []
+    semanticROIindex['Number'] = []
+
+    semanticROIindex['Animal'] = list( set(redIndex['AnimalFace']).intersection(set(redIndex['AnimalNum'])) )
+    semanticROIindex['Number'] = list( set(blueIndex['FaceNum']).intersection(set(blueIndex['AnimalNum'])))
+    semanticROIindex['Face'] = list( set(blueIndex['AnimalFace']).intersection(set(redIndex['FaceNum'])))
+
+    if plot_brain == 2:
+        for semi in range(len(st.semanticClasses)):
+            # Plot brain
+            hemi = 'split'
+            Brain = mne.viz.get_brain_class()
+            # views = 'lateral'  #'lateral' 
+
+            # Load data for current comparison
+            figtitle = 'ROI for ' + st.semanticClasses[semi]               
+            brain = Brain('fsaverage', 'split', 'inflated', subjects_dir=st.subjects_dir, background='white', size=(1200,400))
+
+            brain.add_text(0.1, 0.9, figtitle, 'title', font_size=11)
+            display_labels = [label for (i,label) in enumerate(st.splitlabels[:-2]) if i in semanticROIindex[st.semanticClasses[semi]] ]
+            for label in display_labels:
+                brain.add_label(label, color="#003CFB", borders=False)
+
+            path_save = 'X:\\EEG_BCI\\2. Word decoding\\1. Temporal dynamic decoding\\analysis\\semantic_processing\\' + st.tasks[taskid] + '\\figure\\brain\\p_0.05\\without_pragmatic_atlas\\'
+            # create saving folder if not existing
+            if os.path.exists(path_save + views)==False:
+                os.mkdir(path_save + views)
+            fname = path_save + '\\' + views + '\\' + figtitle + '.png'
+            brain.save_image(fname)
+            brain.close()
+
+    del sumObsTVal
+
+    return overlappedIndex, blueIndex, redIndex, semanticROIindex
 
 
 

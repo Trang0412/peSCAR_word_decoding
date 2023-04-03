@@ -203,9 +203,9 @@ def extract_label_activation_word_semantic(pathStc, pathinv, sub_id, labels):
     return subROIface, subROInumber, subROIanimal
 
     
-def mask_stats_results_on_brain(statsVal, labels, mask, figtitle, time_label, path_save, showplot=0):
+def mask_stats_results_on_brain(statsVal, labels, mask, figtitle, time_label):
     """
-    - Visualizing t-stats or p-values in brain with respect to split parcellation
+    - Mask t-stats or p-values in brain with respect to split parcellation
 
     Parameters
     ----------
@@ -219,10 +219,7 @@ def mask_stats_results_on_brain(statsVal, labels, mask, figtitle, time_label, pa
         
         time_label: integer, time label to display on the figure
         
-        path_save:   string, path to directory for saving figure
-                                  
-        showplot:   integer, integer to indicate saving data for showing brain figures with masked data.
-                    default: 0
+
 
     Returns
     -------
@@ -271,44 +268,6 @@ def mask_stats_results_on_brain(statsVal, labels, mask, figtitle, time_label, pa
     stc_viz._tstep = 0
     
     stc_viz._times = np.array([time_label])
-    
-    # # Configuration for source plot
-    # if showplot==1:
-
-    #     # Load pragmatic labels for semantic presentation
-    #     subjects_dir = 'U:\\usr\\local\\freesurfer\\7.2.0\\subjects\\'
-    #     path_label = subjects_dir + '\\fsaverage\\label\\pragmatic_atlas\\'
-
-    #     lpragmatic_semantic = np.load(path_label + 'lh.pragmatic-semantic.npz')
-    #     rpragmatic_semantic = np.load(path_label + 'rh.pragmatic-semantic.npz')
-    #     pragmatic_info = np.load(path_label + 'pragmatic-info.npz')
-
-    #     # Correct the order for significant semantic areas as there is only 77 areas for the left and 63 areas for the right
-    #     # so other non-significant areas has the same name for the label of [l/r]'h..label'
-
-    #     # get corresponding index of non-singificant areas which has empty name in left and right hemisphere
-    #     llabels_name = [label_name.decode('UTF-8') for label_name in pragmatic_info['lnames'] ]
-    #     rlabels_name = [label_name.decode('UTF-8') for label_name in pragmatic_info['rnames'] ]
-
-    #     llabels  = [mne.read_label(path_label + 'lh.' + label_name + '.label', 'fsaverage') for label_name in  llabels_name]
-    #     rlabels  = [mne.read_label(path_label + 'rh.' + label_name + '.label', 'fsaverage') for label_name in  rlabels_name]
-
-    #     # Plot brain
-    #     hemi = 'split'
-    #     views = 'lateral' # 'medial'
-    #     surfer_kwargs = dict(surface='inflated', subject=st.subject, subjects_dir=st.subjects_dir,
-    #        hemi=hemi, views=views, size=(1200,400), title = figtitle, initial_time=time_label, 
-    #        time_unit='ms', background='black')
-    #     brain = mne.viz.plot_source_estimates(stc_viz,**surfer_kwargs)
-        
-    #     [brain.add_label(llabels[i], borders=True, color = lpragmatic_semantic['rgb'][i]) for i in range(len(llabels_name)) if llabels_name[i] != '']
-    #     [brain.add_label(rlabels[i], borders=True, color = rpragmatic_semantic['rgb'][i]) for i in range(len(rlabels_name)) if rlabels_name[i] != '']
-    #     import time
-    #     time.sleep(5)
-    #     brain.add_text(0.1, 0.9, figtitle, 'title', font_size=11)
-    #     fname = path_save + '\\' +views + ' ' + figtitle[2:len(figtitle)-24] + '.png'
-    #     brain.save_image(fname)
-    #     brain.close()
             
     return stc_viz
 
